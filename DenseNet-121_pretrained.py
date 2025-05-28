@@ -50,7 +50,7 @@ lr=args.lr
 train_root_dir=f"./GastroVision/train"
 val_root_dir=f"./GastroVision/val"
 test_root_dir=f"./GastroVision/test"
-model_path=r'./checkpoints1/'  # set path to the folder that will store model's checkpoints
+model_path=r'./checkpoints2/'  # set path to the folder that will store model's checkpoints
 
 n_classes=20  # number of classes used for training
 
@@ -75,12 +75,9 @@ trans={
     'train':
     transforms.Compose([
         transforms.Resize((224, 224)),
-        transforms.RandomRotation(degrees=30),  # Xoay mạnh hơn
-        transforms.RandomHorizontalFlip(p=0.5), # Lật ngang
-        transforms.RandomVerticalFlip(p=0.2),   # Lật dọc (ít hơn)
-        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # Thay đổi màu sắc
-        transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),  # Dịch chuyển ảnh
-        transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),  # Crop ngẫu nhiên
+        #transforms.RandomRotation(degrees=15),  # Giảm độ xoay
+        #transforms.RandomHorizontalFlip(p=0.5), # Lật ngang
+        #transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.05),  # Giảm cường độ
         transforms.ToTensor(),
         transforms.Normalize([0.4762, 0.3054, 0.2368], 
                              [0.3345, 0.2407, 0.2164])
@@ -138,15 +135,10 @@ class train:
         for i, (name, weight) in enumerate(zip(class_names, class_weights)):
             logging.info(f"Class {name}: {weight:.4f}")
         
-        self.class_weights = class_weights.to(device)
-        
-        # Tạo weighted sampler để cân bằng dữ liệu
-        sample_weights = [class_weights[label] for _, label in training_dataset]
-        sampler = WeightedRandomSampler(sample_weights, len(sample_weights))
-        
-        self.training_generator = data.DataLoader(training_dataset, batch_size, sampler=sampler)
-        self.validation_generator = data.DataLoader(validation_dataset, batch_size)
-        self.test_generator = data.DataLoader(test_dataset, batch_size)
+        # Dùng shuffle=True, num_workers=4, pin_memory=True
+        self.training_generator = data.DataLoader(training_dataset, batch_size, shuffle=True, num_workers=4, pin_memory=True)
+        self.validation_generator = data.DataLoader(validation_dataset, batch_size, num_workers=4, pin_memory=True)
+        self.test_generator = data.DataLoader(test_dataset, batch_size, num_workers=4, pin_memory=True)
         
         logging.info('\nDataset sizes:')
         logging.info(f'Training set: {len(training_dataset)} images')
@@ -171,7 +163,8 @@ class train:
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=4)
         
         
-        criterion = nn.NLLLoss(weight=self.class_weights)
+        #criterion = nn.NLLLoss(weight=self.class_weights)
+        criterion = nn.NLLLoss()
         val_f1_max=0.0
         epochs=[]
         lossesT=[]
